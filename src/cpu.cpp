@@ -116,13 +116,13 @@ void CPU::OP_5xy0() {
     }
 }
 
-// DONE //
-
 // LD Vx, byte
 void CPU::OP_6xkk() {
     // Set Vx = kk.
     // The interpreter puts the value kk into register Vx.
-
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t kk = opcode & 0x00FFu;
+    registers[Vx] = kk;
 }
 
 // ADD Vx, byte
@@ -130,13 +130,18 @@ void CPU::OP_7xkk() {
     // Set Vx = Vx + kk.
     // Adds the value kk to the value of register Vx, then stores 
     // the result in Vx.
-
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t kk = opcode & 0x00FFu;
+    registers[Vx] += kk;
 }
 
 // LD Vx, Vy
 void CPU::OP_8xy0() {
     // Set Vx = Vy.
     // Stores the value of register Vy in register Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    registers[Vx] = registers[Vy];
 }
 
 // OR Vx, Vy
@@ -146,7 +151,9 @@ void CPU::OP_8xy1() {
     // result in Vx. A bitwise OR compares the corrseponding bits from 
     // two values, and if either bit is 1, then the same bit in the result 
     // is also 1. Otherwise, it is 0.
-
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    registers[Vx] |= registers[Vy];
 }
 
 // AND Vx, Vy
@@ -156,7 +163,9 @@ void CPU::OP_8xy2() {
     // result in Vx. A bitwise AND compares the corrseponding bits from 
     // two values, and if both bits are 1, then the same bit in the result
     // is also 1. Otherwise, it is 0. 
-
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    registers[Vx] &= registers[Vy];
 }
 
 // XOR Vx, Vy
@@ -165,6 +174,9 @@ void CPU::OP_8xy3() {
     // the result in Vx. An exclusive OR compares the corrseponding bits from 
     // two values, and if the bits are not both the same, then the corresponding
     // bit in the result is set to 1. Otherwise, it is 0. 
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    registers[Vx] ^= registers[Vy];
 }
 
 // ADD Vx, Vy
@@ -173,6 +185,11 @@ void CPU::OP_8xy4() {
     // The values of Vx and Vy are added together. If the result is greater
     // than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. Only the lowest 
     // 8 bits of the result are kept, and stored in Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    uint16_t sum = registers[Vx] + registers[Vy];
+    registers[0xF] = (sum > 0xFFu);
+    registers[Vx] = sum & 0xFFu;
 }
 
 // SUB Vx, Vy
@@ -180,6 +197,10 @@ void CPU::OP_8xy5() {
     // Set Vx = Vx - Vy, set VF = NOT borrow.
     // If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, 
     // and the results stored in Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    registers[0xF] = registers[Vx] > registers[Vy];
+    registers[Vx] -= registers[Vy];
 }
 
 // SHR Vx {, Vy}
@@ -187,6 +208,9 @@ void CPU::OP_8xy6() {
     // Set Vx = Vx SHR 1.
     // If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. 
     // Then Vx is divided by 2.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    registers[0xF] = registers[Vx] & 0x1u;
+    registers[Vx] >>= 1;
 }
 
 // SUBN Vx, Vy
@@ -194,6 +218,10 @@ void CPU::OP_8xy7() {
     // Set Vx = Vy - Vx, set VF = NOT borrow.
     // If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy,
     // and the results stored in Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    registers[0xF] = registers[Vy] > registers[Vx];
+    registers[Vx] = registers[Vy] - registers[Vx];
 }
 
 // SHL Vx {, Vy}
@@ -201,6 +229,9 @@ void CPU::OP_8xyE() {
     // Set Vx = Vx SHL 1.
     // If the most-significant bit of Vx is 1, then VF is set to 1, otherwise to 0. 
     // Then Vx is multiplied by 2.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    registers[0xF] = (registers[Vx] & 0x80) >> 7u;
+    registers[Vx] <<= 1;
 }
 
 // SNE Vx, Vy
@@ -208,18 +239,26 @@ void CPU::OP_9xy0() {
     // Skip next instruction if Vx != Vy.
     // The values of Vx and Vy are compared, and if they are not equal, 
     // the program counter is increased by 2.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    if (registers[Vx] != registers[Vy]) {
+        pc += 2;
+    }
 }
 
 // LD I, addr
 void CPU::OP_Annn() {
     // Set I = nnn.
     // The value of register I is set to nnn.
+    index = opcode & 0x0FFFu;
 }
 
 // JP V0, addr
 void CPU::OP_Bnnn() {
     // Jump to location nnn + V0.
     // The program counter is set to nnn plus the value of V0.
+    uint16_t nnn = opcode & 0x0FFFu;
+    pc = nnn + registers[0x0];
 }
 
 // RND Vx, byte
@@ -228,6 +267,9 @@ void CPU::OP_Cxkk() {
     // The interpreter generates a random number from 0 to 255, 
     // which is then ANDed with the value kk. The results are stored in Vx. 
     // See instruction 8xy2 for more information on AND.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t kk = opcode & 0x00FFu;
+    registers[Vx] = kk & randByte(randGen);
 }
 
 // DRW Vx, Vy, nibble
@@ -240,6 +282,31 @@ void CPU::OP_Dxyn() {
     // is outside the coordinates of the display, it wraps around to the opposite side of the 
     // screen. See instruction 8xy3 for more information on XOR, and section 2.4, 
     // Display, for more information on the Chip-8 screen and sprites.
+    uint8_t n = opcode & 0x000Fu;
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t Vy = (opcode & 0x00F0u) >> 4u;
+    uint8_t x_Pos = registers[Vx] % SCREEN_WIDTH;
+    uint8_t y_Pos = registers[Vy] % SCREEN_HEIGHT;
+
+    registers[0xF] = 0;
+
+    for (int i = 0; i < n; i++) {
+        uint8_t currByte = memory[index + i];
+
+        for (int j = 0; j < 8; j++) {
+            uint8_t currBit = currByte & (0x80u >> j);
+            if (currBit != 0) {
+                uint8_t x = (x_Pos + j) % SCREEN_WIDTH;
+                uint8_t y = (y_Pos + i) % SCREEN_HEIGHT;
+
+                if (video[y][x] != 0) {
+                    registers[0xF] = 1;
+                }
+
+                video[y][x] ^= 0xFFFFFFFFFFFFu;
+            }
+        }
+    }
 }
 
 // SKP Vx

@@ -7,6 +7,8 @@ class CPU {
 public:
     CPU();
     void LoadROM(const char* filename);
+    static constexpr uint8_t SCREEN_WIDTH = 64;
+    static constexpr uint8_t SCREEN_HEIGHT = 32;
 
 private:
     uint8_t memory[4096] {};
@@ -18,14 +20,14 @@ private:
     uint8_t delay_timer {};
     uint8_t sound_timer {};
     uint8_t keypad[16] {};
-    uint32_t video[64 * 32] {};
+    uint32_t video[SCREEN_HEIGHT][SCREEN_WIDTH] {};
     uint16_t opcode;
 
-    const uint16_t START_ADDR = 0x200;
+    static constexpr uint16_t START_ADDR = 0x200;
 
-    const size_t FONTSET_SIZE = 80;
-    const uint16_t FONTSET_ADDR = 0x50;
-    uint8_t fontset[80] =
+    static constexpr size_t FONTSET_SIZE = 80;
+    static constexpr uint16_t FONTSET_ADDR = 0x50;
+    uint8_t fontset[FONTSET_SIZE] =
     {
 	    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
 	    0x20, 0x60, 0x20, 0x20, 0x70, // 1
