@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <random>
 #include <chrono>
+#include <raylib.h>
 using namespace std;
 
 class CPU {
@@ -9,6 +10,15 @@ public:
     void LoadROM(const char* filename);
     static constexpr uint8_t SCREEN_WIDTH = 64;
     static constexpr uint8_t SCREEN_HEIGHT = 32;
+    void Cycle();
+    void SetKey(uint8_t key, uint8_t value);
+
+    Color* GetColorBuffer() {
+        return &video[0][0];
+    }
+    
+    Color onColor = GREEN;
+    Color offColor = BLACK;
 
 private:
     uint8_t memory[4096] {};
@@ -20,9 +30,8 @@ private:
     uint8_t delay_timer {};
     uint8_t sound_timer {};
     uint8_t keypad[16] {};
-    uint32_t video[SCREEN_HEIGHT][SCREEN_WIDTH] {};
+    Color video[SCREEN_HEIGHT][SCREEN_WIDTH] {BLACK};
     uint16_t opcode;
-
     static constexpr uint16_t START_ADDR = 0x200;
 
     static constexpr size_t FONTSET_SIZE = 80;
@@ -85,4 +94,5 @@ private:
     void OP_Fx33();
     void OP_Fx55();
     void OP_Fx65();
+    void OP_none();
 };

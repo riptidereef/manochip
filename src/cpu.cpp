@@ -2,6 +2,7 @@
 #include <fstream>
 #include <cstring>
 #include <iostream>
+#include <raylib.h>
 using namespace std;
 
 CPU::CPU() {
@@ -35,10 +36,99 @@ void CPU::LoadROM(const char* filename) {
     }
 }
 
+void CPU::Cycle() {
+    // Fetch
+    opcode = (memory[pc] << 8u) | memory[pc + 1]; 
+
+    pc += 2;
+
+    // Decode / Execute
+    switch (opcode & 0xF000u) {
+        case 0x0000:
+            switch (opcode & 0x00FFu) {
+                case 0x00E0: OP_00E0(); break;
+                case 0x00EE: OP_00EE(); break;
+                default: OP_0nnn(); break;
+            }
+            break;
+
+        case 0x1000: OP_1nnn(); break;
+        case 0x2000: OP_2nnn(); break;
+        case 0x3000: OP_3xkk(); break;
+        case 0x4000: OP_4xkk(); break;
+        case 0x5000: OP_5xy0(); break;
+        case 0x6000: OP_6xkk(); break;
+        case 0x7000: OP_7xkk(); break;
+
+        case 0x8000:
+            switch (opcode & 0x000Fu) {
+                case 0x0000: OP_8xy0(); break;
+                case 0x0001: OP_8xy1(); break;
+                case 0x0002: OP_8xy2(); break;
+                case 0x0003: OP_8xy3(); break;
+                case 0x0004: OP_8xy4(); break;
+                case 0x0005: OP_8xy5(); break;
+                case 0x0006: OP_8xy6(); break;
+                case 0x0007: OP_8xy7(); break;
+                case 0x000E: OP_8xyE(); break;
+                default: OP_none(); break;
+            }
+            break;
+
+        case 0x9000: OP_9xy0(); break;
+        case 0xA000: OP_Annn(); break;
+        case 0xB000: OP_Bnnn(); break;
+        case 0xC000: OP_Cxkk(); break;
+        case 0xD000: OP_Dxyn(); break;
+
+        case 0xE000:
+            switch (opcode & 0x00FFu) {
+                case 0x9E: OP_Ex9E(); break;
+                case 0xA1: OP_ExA1(); break;
+                default: OP_none(); break;
+            }
+            break;
+
+        case 0xF000:
+            switch (opcode & 0x00FFu) {
+                case 0x07: OP_Fx07(); break;
+                case 0x0A: OP_Fx0A(); break;
+                case 0x15: OP_Fx15(); break;
+                case 0x18: OP_Fx18(); break;
+                case 0x1E: OP_Fx1E(); break;
+                case 0x29: OP_Fx29(); break;
+                case 0x33: OP_Fx33(); break;
+                case 0x55: OP_Fx55(); break;
+                case 0x65: OP_Fx65(); break;
+                default: OP_none(); break;
+            }
+            break;
+
+        default:
+            OP_none();
+    }
+
+
+    if (delay_timer > 0) {
+        delay_timer--;
+    }
+    
+    if (sound_timer > 0) {
+        sound_timer--;
+    }
+}
+
+void CPU::SetKey(uint8_t key, uint8_t value) {
+    keypad[key] = value;
+}
+
 // CLS
 void CPU::OP_00E0() {
-    // Clear the display.
-    memset(video, 0, sizeof(video));
+    for (int y = 0; y < SCREEN_HEIGHT; y++) {
+        for (int x = 0; x < SCREEN_WIDTH; x++) {
+            video[y][x] = offColor;
+        }
+    }
 }
 
 // RET
@@ -56,6 +146,7 @@ void CPU::OP_0nnn() {
     // This instruction is only used on the old computers on which 
     // Chip-8 was originally implemented. It is ignored by modern 
     // interpreters.
+    cout << "SYS addr." << endl;
 }
 
 // JP addr
@@ -63,8 +154,6 @@ void CPU::OP_1nnn() {
     // Jump to location nnn.
     // The interpreter sets the program counter to nnn.
     uint16_t address = opcode & 0x0FFFu;
-    stack[sp] = pc;
-    sp++;
     pc = address;
 }
 
@@ -74,6 +163,8 @@ void CPU::OP_2nnn() {
     // The interpreter increments the stack pointer, then puts the 
     // current PC on the top of the stack. The PC is then set to nnn.
     uint16_t address = opcode & 0x0FFFu;
+    stack[sp] = pc;
+    sp++;
     pc = address;
 }
 
@@ -112,7 +203,7 @@ void CPU::OP_5xy0() {
     uint8_t Vy = (opcode & 0x00F0u) >> 4u;
 
     if (registers[Vx] == registers[Vy]) {
-        sp += 2;
+        pc += 2;
     }
 }
 
@@ -299,11 +390,13 @@ void CPU::OP_Dxyn() {
                 uint8_t x = (x_Pos + j) % SCREEN_WIDTH;
                 uint8_t y = (y_Pos + i) % SCREEN_HEIGHT;
 
-                if (video[y][x] != 0) {
+                if (video[y][x].r == onColor.r && video[y][x].g == onColor.g && video[y][x].b == onColor.b) {
                     registers[0xF] = 1;
+                    video[y][x] = offColor;
                 }
-
-                video[y][x] ^= 0xFFFFFFFFFFFFu;
+                else {
+                    video[y][x] = onColor;
+                }
             }
         }
     }
@@ -427,4 +520,8 @@ void CPU::OP_Fx65() {
     for (uint8_t i = 0; i <= Vx; i++) {
         registers[i] = memory[index + i];
     }
+}
+
+void CPU::OP_none() {
+    cout << "Unknown opcode: " << std::hex << opcode << "\n";
 }
