@@ -314,6 +314,11 @@ void CPU::OP_Ex9E() {
     // Skip next instruction if key with the value of Vx is pressed.
     // Checks the keyboard, and if the key corresponding to the value of Vx 
     // is currently in the down position, PC is increased by 2.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t key = registers[Vx];
+    if (keypad[key]) {
+        pc += 2;
+    }
 }
 
 // SKNP Vx
@@ -321,36 +326,59 @@ void CPU::OP_ExA1() {
     // Skip next instruction if key with the value of Vx is not pressed.
     // Checks the keyboard, and if the key corresponding to the value of Vx 
     // is currently in the up position, PC is increased by 2.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t key = registers[Vx];
+    if (!keypad[key]) {
+        pc += 2;
+    }
 }
 
 // LD Vx, DT
 void CPU::OP_Fx07() {
     // Set Vx = delay timer value.
     // The value of DT is placed into Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    registers[Vx] = delay_timer;
 }
 
 // LD Vx, K
 void CPU::OP_Fx0A() {
     // Wait for a key press, store the value of the key in Vx.
     // All execution stops until a key is pressed, then the value of that key is stored in Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+
+    for (uint8_t i = 0; i < 16; i++) {
+        if (keypad[i]) {
+            registers[Vx] = i;
+            return;
+        }
+    }
+
+    pc -= 2;
 }
 
 // LD DT, Vx
 void CPU::OP_Fx15() {
     // Set delay timer = Vx.
     // DT is set equal to the value of Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    delay_timer = registers[Vx];
 }
 
 // LD ST, Vx
 void CPU::OP_Fx18() {
     // Set sound timer = Vx.
     // ST is set equal to the value of Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    sound_timer = registers[Vx];
 }
 
 // ADD I, Vx
 void CPU::OP_Fx1E() {
     // Set I = I + Vx.
     // The values of I and Vx are added, and the results are stored in I.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    index += registers[Vx];
 }
 
 // LD F, Vx
@@ -359,6 +387,9 @@ void CPU::OP_Fx29() {
     // The value of I is set to the location for the hexadecimal sprite 
     // corresponding to the value of Vx. See section 2.4, Display, for more
     // information on the Chip-8 hexadecimal font.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t digit = registers[Vx];
+    index = FONTSET_ADDR + (5 * digit);
 }
 
 // LD B, Vx
@@ -367,6 +398,11 @@ void CPU::OP_Fx33() {
     // The interpreter takes the decimal value of Vx, and places the hundreds
     // digit in memory at location in I, the tens digit at location I+1, 
     // and the ones digit at location I+2.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+    uint8_t digit = registers[Vx];
+    memory[index] = digit / 100;
+    memory[index + 1] = (digit / 10) % 10;
+    memory[index + 2] = digit % 10;
 }
 
 // LD [I], Vx
@@ -374,6 +410,11 @@ void CPU::OP_Fx55() {
     // Store registers V0 through Vx in memory starting at location I.
     // The interpreter copies the values of registers V0 through Vx into memory,
     // starting at the address in I.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+
+    for (uint8_t i = 0; i <= Vx; i++) {
+        memory[index + i] = registers[i];
+    }
 }
 
 // LD Vx, [I]
@@ -381,4 +422,9 @@ void CPU::OP_Fx65() {
     // Read registers V0 through Vx from memory starting at location I.
     // The interpreter reads values from memory starting at location I
     // into registers V0 through Vx.
+    uint8_t Vx = (opcode & 0x0F00u) >> 8u;
+
+    for (uint8_t i = 0; i <= Vx; i++) {
+        registers[i] = memory[index + i];
+    }
 }
